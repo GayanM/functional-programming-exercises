@@ -23,8 +23,8 @@ public class ProductResource {
     private ProductRepo productRepos;
 
     @RequestMapping("")
-    public List<Product> filterProducts(@Param("category") final Optional<String> category,
-                                        @Param("lower-price-limit") final Optional<Double> lowerLimitPrice,
+    public List<Product> filterProducts(@RequestParam("category") final Optional<String> category,
+                                        @RequestParam("lower-price-limit") final Optional<Double> lowerLimitPrice,
                                         @RequestParam("upper-price-limit") final Optional<Double> upperLimitPrice ) {
 
 

@@ -1,5 +1,7 @@
 package com.mycompany.functional.programming.exercises.resources;
 
+import com.mycompany.functional.programming.exercises.dto.Customer;
+import com.mycompany.functional.programming.exercises.dto.Order;
 import com.mycompany.functional.programming.exercises.dto.Product;
 import com.mycompany.functional.programming.exercises.repos.OrderRepo;
 import com.mycompany.functional.programming.exercises.repos.ProductRepo;
@@ -13,9 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -29,6 +29,7 @@ public class ProductResource {
     @Autowired
     private OrderRepo orderRepo;
 
+    //Ex-1: Filter products by category and price range
     @RequestMapping("")
     public List<Product> filterProducts(@RequestParam("category") final Optional<String> category,
                                         @RequestParam("lower-price-limit") final Optional<Double> lowerLimitPrice,
@@ -60,6 +61,7 @@ public class ProductResource {
                 ).collect(Collectors.toList());
     }
 
+    //Ex-3:Obtain a list of product with given category and then apply 10% discount
     @RequestMapping("/discount")
     public List<Product> applyDiscountOnCategory(@RequestParam("category") final Optional<String> category,
                                                  @RequestParam("discount") final Optional<Double> discount) {
@@ -82,6 +84,7 @@ public class ProductResource {
                 ).collect(Collectors.toList());
     }
 
+    //Ex-4: Obtain a list of products based on customer tier and date range
     @RequestMapping("/customer-tier")
     public List<Product> getProductsByCustomerTier (@RequestParam("tier") final Optional<Integer> tier,
                                                     @RequestParam("start-date") final Optional<String> startDate,
@@ -117,6 +120,7 @@ public class ProductResource {
     }
 
 
+    //Ex-5: Get the cheapest products by category
     @RequestMapping("/cheapest")
     public Optional<Product> getCheapestProductByCategory(@RequestParam("category") final Optional<String> category) {
         return productRepos.findAll().stream().filter(p -> {
@@ -128,9 +132,56 @@ public class ProductResource {
                 new Product(p.getId(), p.getName(), p.getPrice(), p.getCategory()));
     }
 
-    public Optional<Product> getCheapestBook(List<Product> productsList) {
-        return productsList.stream().filter(p -> "Books".equalsIgnoreCase(p.getCategory())).min(Comparator.
-                comparing(Product::getPrice));
+    //Ex-7: Get a list of orders which were ordered on 15-Mar-2021, log the order records to the console and then return
+    // its product list
+    @RequestMapping("/log-orders")
+    public List<Product> logOrdersOnGivenDateAndReturnProducts(@RequestParam("date") final Optional<String> date) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        return orderRepo.findAll().stream()
+                .filter(o -> o.getOrderDate().isEqual(LocalDate.parse(date.get(), formatter)))
+                .peek(o -> System.out.println(o.toString()))
+                .flatMap(o -> o.getProducts().stream())
+                .distinct().map(p -> new Product(p.getId(), p.getName(), p.getPrice(), p.getCategory()))
+                .collect(Collectors.toList());
+    }
+
+    //Ex-10: Obtain a collection of statistic figures (i.e. sum, average, max, min, count) for all products of
+    // category “Books”
+
+    @RequestMapping("/statistics")
+    public DoubleSummaryStatistics getStatistics(@RequestParam("category") final Optional<String> category) {
+        return productRepos.findAll().stream().filter(p -> category.get().equalsIgnoreCase(p.getCategory())).
+                mapToDouble(p -> p.getPrice()).summaryStatistics();
+    }
+
+    //Ex-14: Obtain a data map with list of product name by category
+    @RequestMapping("/product-category")
+    Map<String, List<String>> getProductsByCategory(List<Product> productList) {
+        return productRepos.findAll().stream().collect(Collectors.groupingBy(com.mycompany.functional.programming.
+                        exercises.models.Product::getCategory, Collectors.mapping(product -> product.getName(),
+                Collectors.toList())));
+    }
+
+    //Ex-15: Get the most expensive product by category
+    @RequestMapping("/most-expensive")
+    Map<String, Optional<Product>> getMostExpensiveProductByCategory () {
+        Map<String, Optional<com.mycompany.functional.programming.exercises.models.Product>> mostExpensiveByCategory = productRepos.findAll().stream().collect(Collectors.groupingBy(
+                    com.mycompany.functional.programming.exercises.models.Product::getCategory,
+                    Collectors.maxBy(Comparator.comparing(com.mycompany.functional.programming.exercises.models.
+                            Product::getPrice)
+                 )
+         ));
+        Map<String, Optional<Product>> ordersByCustomerTransformed = new HashMap();
+        mostExpensiveByCategory.entrySet().stream().forEach(e -> {
+            ordersByCustomerTransformed.put(e.getKey(), Optional.of(new Product(e.getValue().get().getId(),
+                    e.getValue().get().getName(), e.getValue().get().getPrice(), e.getValue().get().getCategory())));
+        });
+        return ordersByCustomerTransformed;
+    }
+
+    //Ex-15: Get the most expensive product by category
+    Map<String, Optional<Product>> getMostExpensiveProductByCategory (List<Product> productList) {
+        return productList.stream().collect(Collectors.groupingBy(Product::getCategory, Collectors.maxBy(Comparator.comparing(Product::getPrice))));
     }
 
 }
